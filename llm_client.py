@@ -24,6 +24,32 @@ def create_llm_client() -> 'LLMClient':
     """
     # 使用絕對路徑加載配置文件
     import os
+    import re
+    from pathlib import Path
+    
+    # 簡單的.env文件解析器
+    def parse_dotenv(filepath):
+        env_vars = {}
+        if os.path.exists(filepath):
+            with open(filepath, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith('#'):
+                        continue
+                    match = re.match(r'^([A-Za-z0-9_]+)=(.*)$', line)
+                    if match:
+                        key, value = match.groups()
+                        env_vars[key] = value
+                        os.environ[key] = value
+            print(f"已從 {filepath} 加載 {len(env_vars)} 個環境變數")
+        return env_vars
+    
+    # 嘗試從.env加載環境變數
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    if os.path.exists(env_path):
+        parse_dotenv(env_path)
+    
+    # 使用配置加載器加載配置
     config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".llm_config.json")
     print(f"嘗試從以下路徑加載配置：{config_path}")
     config_loader = ConfigLoader(config_path)
@@ -113,6 +139,26 @@ class LLMClient:
         """
         # 使用絕對路徑加載配置文件
         import os
+        import re
+        
+        # 處理.env文件（如果存在）
+        env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+        if os.path.exists(env_path):
+            print(f"在__init__中嘗試加載環境變數：{env_path}")
+            env_vars = {}
+            with open(env_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith('#'):
+                        continue
+                    match = re.match(r'^([A-Za-z0-9_]+)=(.*)$', line)
+                    if match:
+                        key, value = match.groups()
+                        env_vars[key] = value
+                        os.environ[key] = value
+            print(f"已加載 {len(env_vars)} 個環境變數")
+        
+        # 加載配置
         config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".llm_config.json")
         print(f"在__init__中嘗試從以下路徑加載配置：{config_path}")
         config_loader = ConfigLoader(config_path)
