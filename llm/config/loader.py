@@ -73,6 +73,11 @@ class ConfigLoader:
         if "ANTHROPIC_API_KEY" in os.environ:
             self._ensure_provider_config("anthropic")
             self._config["anthropic"]["api_key"] = os.environ["ANTHROPIC_API_KEY"]
+            
+        # X.AI
+        if "XAI_API_KEY" in os.environ:
+            self._ensure_provider_config("xai")
+            self._config["xai"]["api_key"] = os.environ["XAI_API_KEY"]
         
         # 預設提供商
         if "DEFAULT_LLM_PROVIDER" in os.environ:

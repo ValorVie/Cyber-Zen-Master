@@ -7,10 +7,12 @@ from .base import LLMProvider
 from .deepseek import DeepSeekProvider
 from .openai import OpenAIProvider
 from .external_api import ExternalAPIProvider
+from .xai import XAIProvider
 
 __all__ = [
     'LLMProvider',
     'DeepSeekProvider',
     'OpenAIProvider',
-    'ExternalAPIProvider'
+    'ExternalAPIProvider',
+    'XAIProvider'
 ]
