@@ -92,7 +92,7 @@ if __name__ == "__main__":
     # print(f"所有問題及回答已保存至 {final_output_file}")
 
     # 將回答寫到每個主題中
-    topics = ["人活著的意義是什麼", "2"]
+    topics = ["生蠔煮熟叫什麼？"]
 
     for topic in topics:
         print(f"\n開始處理問題: {topic}")
