@@ -207,25 +207,68 @@ class LLMClient:
             
             # 嘗試使用真實API
             try:
-                # 從環境變量或配置文件加載API金鑰
-                api_key = os.environ.get("XAI_API_KEY", "")
-                base_url = os.environ.get("XAI_BASE_URL", "https://api.x.ai/v1")
+                # 獲取默認提供商
+                default_provider = os.environ.get("DEFAULT_LLM_PROVIDER", "xai")
                 
-                # 如果環境變量中沒有，則嘗試從配置文件加載
-                if not api_key and os.path.exists(config_path):
+                # 從配置文件加載所有提供商配置
+                providers_config = {}
+                if os.path.exists(config_path):
                     with open(config_path, 'r', encoding='utf-8') as f:
                         config = json.load(f)
-                    
-                    xai_config = config.get("xai", {})
-                    api_key = xai_config.get("api_key", "")
-                    base_url = xai_config.get("base_url", base_url)
+                    # 保存配置文件中的所有提供商配置
+                    for provider in ["xai", "openai", "deepseek", "anthropic"]:
+                        if provider in config:
+                            providers_config[provider] = config[provider]
+                    # 獲取默認提供商（如果沒有從環境變量設置）
+                    if not default_provider and "default_provider" in config:
+                        default_provider = config["default_provider"]
                 
-                # 檢查API金鑰和模型
-                model = os.environ.get("XAI_MODEL", "grok-3-beta")
+                print(f"使用提供商: {default_provider}")
+                
+                # 根據默認提供商選擇API配置
+                api_key = ""
+                base_url = ""
+                model = ""
+                
+                if default_provider == "xai":
+                    api_key = os.environ.get("XAI_API_KEY", "")
+                    base_url = os.environ.get("XAI_BASE_URL", "https://api.x.ai/v1")
+                    model = os.environ.get("XAI_MODEL", "grok-3-beta")
+                    
+                    # 如果環境變量中沒有，則嘗試從配置文件加載
+                    if not api_key and "xai" in providers_config:
+                        xai_config = providers_config["xai"]
+                        api_key = xai_config.get("api_key", "")
+                        base_url = xai_config.get("base_url", base_url)
+                
+                elif default_provider == "openai":
+                    api_key = os.environ.get("OPENAI_API_KEY", "")
+                    base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
+                    model = os.environ.get("OPENAI_MODEL", "gpt-4")
+                    
+                    # 如果環境變量中沒有，則嘗試從配置文件加載
+                    if not api_key and "openai" in providers_config:
+                        openai_config = providers_config["openai"]
+                        api_key = openai_config.get("api_key", "")
+                        base_url = openai_config.get("base_url", base_url)
+                
+                elif default_provider == "deepseek":
+                    api_key = os.environ.get("DEEPSEEK_API_KEY", "")
+                    base_url = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
+                    model = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
+                    
+                    # 如果環境變量中沒有，則嘗試從配置文件加載
+                    if not api_key and "deepseek" in providers_config:
+                        deepseek_config = providers_config["deepseek"]
+                        api_key = deepseek_config.get("api_key", "")
+                        base_url = deepseek_config.get("base_url", base_url)
+                
+                else:
+                    raise ValueError(f"不支持的提供商：{default_provider}")
                 
                 # 驗證API金鑰
                 if api_key and len(api_key) > 20:  # 確保API金鑰足夠長
-                    print(f"使用真實API，API金鑰前綴：{api_key[:8]}...，模型：{model}")
+                    print(f"使用真實API ({default_provider})，API金鑰前綴：{api_key[:8]}...，模型：{model}")
                     
                     # 導入必要的包
                     from openai import OpenAI
@@ -234,7 +277,7 @@ class LLMClient:
                     client = OpenAI(api_key=api_key, base_url=base_url)
                     
                     # 調用API
-                    print(f"發送請求到 {base_url}，消息數：{len(messages)}")
+                    print(f"發送請求到 {base_url}，模型：{model}，消息數：{len(messages)}")
                     response = client.chat.completions.create(
                         model=model,
                         messages=messages,

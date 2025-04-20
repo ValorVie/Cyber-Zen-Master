@@ -1,5 +1,6 @@
 output/
 .llm_config.json
+final_answers.txt
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

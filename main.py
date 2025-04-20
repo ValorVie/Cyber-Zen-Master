@@ -75,17 +75,43 @@ def run_answer_anything_system(full_topic):
 
 
 if __name__ == "__main__":
-    topics = ["人活著的意義是什麼"]
+    # 全部問題寫到一份文件中
+    # topics = ["人活著的意義是什麼"]
 
-    final_output_file = "output/final_answers.txt"
-    os.makedirs("output", exist_ok=True)
+    # final_output_file = "output/final_answers.txt"
+    # os.makedirs("output", exist_ok=True)
 
-    with open(final_output_file, "w", encoding="utf-8") as f:
-        for topic in topics:
-            print(f"\n開始處理問題: {topic}")
-            print("=" * 50)
-            question, answer = run_answer_anything_system(topic)
-            f.write(f"問題: {question}\n回答: {answer}\n\n")
-            print("=" * 50)
+    # with open(final_output_file, "w", encoding="utf-8") as f:
+    #     for topic in topics:
+    #         print(f"\n開始處理問題: {topic}")
+    #         print("=" * 50)
+    #         question, answer = run_answer_anything_system(topic)
+    #         f.write(f"問題: {question}\n回答: {answer}\n\n")
+    #         print("=" * 50)
 
-    print(f"所有問題及回答已保存至 {final_output_file}")
+    # print(f"所有問題及回答已保存至 {final_output_file}")
+
+    # 將回答寫到每個主題中
+    topics = ["人活著的意義是什麼", "2"]
+
+    for topic in topics:
+        print(f"\n開始處理問題: {topic}")
+        print("=" * 50)
+
+        # 執行問答邏輯
+        question, answer = run_answer_anything_system(topic)
+
+        # 將主題當作資料夾名稱（可依需求轉換）
+        folder_name = topic.replace(" ", "_")
+        output_dir = os.path.join("output", folder_name)
+        os.makedirs(output_dir, exist_ok=True)
+
+        # 檔案路徑
+        final_output_file = os.path.join(output_dir, "final_answers.txt")
+
+        # 寫入該主題的回答
+        with open(final_output_file, "w", encoding="utf-8") as f:
+            f.write(f"問題: {question}\n回答: {answer}\n")
+
+        print(f"已保存到 {final_output_file}")
+        print("=" * 50)
