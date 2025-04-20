@@ -1,7 +1,11 @@
 """LLM客戶端封裝，提供與LLM互動的統一介面。"""
 
 import os
+import re
+import json
+import logging
 from typing import Dict, List, Any, Optional
+from pathlib import Path
 
 from llm.client import LLMClient as LLMClientBase
 from llm.providers.deepseek import DeepSeekProvider
@@ -12,6 +16,30 @@ from llm.config.loader import ConfigLoader
 from llm.services.cache import LLMCache
 from llm.services.metrics import LLMMetrics
 
+# 設置日誌
+logger = logging.getLogger(__name__)
+
+def parse_dotenv(filepath):
+    """簡單的.env文件解析器"""
+    env_vars = {}
+    
+    if not os.path.exists(filepath):
+        return env_vars
+    
+    with open(filepath, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            
+            match = re.match(r'^([A-Za-z0-9_]+)=(.*)$', line)
+            if match:
+                key, value = match.groups()
+                env_vars[key] = value
+                # 也設置到環境變數中
+                os.environ[key] = value
+    
+    return env_vars
 
 def create_llm_client() -> 'LLMClient':
     """創建並配置LLM客戶端。
@@ -22,35 +50,17 @@ def create_llm_client() -> 'LLMClient':
     Returns:
         LLMClient: 配置好的LLM客戶端實例
     """
-    # 使用絕對路徑加載配置文件
-    import os
-    import re
-    from pathlib import Path
-    
-    # 簡單的.env文件解析器
-    def parse_dotenv(filepath):
-        env_vars = {}
-        if os.path.exists(filepath):
-            with open(filepath, 'r', encoding='utf-8') as f:
-                for line in f:
-                    line = line.strip()
-                    if not line or line.startswith('#'):
-                        continue
-                    match = re.match(r'^([A-Za-z0-9_]+)=(.*)$', line)
-                    if match:
-                        key, value = match.groups()
-                        env_vars[key] = value
-                        os.environ[key] = value
-            print(f"已從 {filepath} 加載 {len(env_vars)} 個環境變數")
-        return env_vars
+    # 使用絕對路徑加載配置
+    current_dir = os.path.dirname(os.path.abspath(__file__))
     
     # 嘗試從.env加載環境變數
-    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    env_path = os.path.join(current_dir, ".env")
     if os.path.exists(env_path):
-        parse_dotenv(env_path)
+        env_vars = parse_dotenv(env_path)
+        print(f"已從 {env_path} 加載 {len(env_vars)} 個環境變數")
     
     # 使用配置加載器加載配置
-    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".llm_config.json")
+    config_path = os.path.join(current_dir, ".llm_config.json")
     print(f"嘗試從以下路徑加載配置：{config_path}")
     config_loader = ConfigLoader(config_path)
     config = config_loader.load()
@@ -60,7 +70,6 @@ def create_llm_client() -> 'LLMClient':
     metrics = LLMMetrics()
     
     # 創建客戶端，注意這裡使用的是llm.client模塊中的LLMClient
-    from llm.client import LLMClient as LLMClientBase
     client = LLMClientBase(
         cache=cache,
         metrics=metrics,
@@ -115,7 +124,7 @@ def create_llm_client() -> 'LLMClient':
         client.register_provider("external", external_provider)
     
     # 設置預設提供商
-    default_provider = config_loader.get_default_provider()
+    default_provider = config_loader.get_default_provider() or os.environ.get("DEFAULT_LLM_PROVIDER")
     if default_provider and default_provider in client.list_providers():
         client.set_default_provider(default_provider)
     elif "xai" in client.list_providers():
@@ -137,29 +146,18 @@ class LLMClient:
             api_key: API金鑰（可選，如果指定則覆蓋配置）
             base_url: API基礎URL（可選，如果指定則覆蓋配置）
         """
-        # 使用絕對路徑加載配置文件
-        import os
-        import re
+        # 使用絕對路徑加載配置
+        current_dir = os.path.dirname(os.path.abspath(__file__))
         
         # 處理.env文件（如果存在）
-        env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+        env_path = os.path.join(current_dir, ".env")
         if os.path.exists(env_path):
             print(f"在__init__中嘗試加載環境變數：{env_path}")
-            env_vars = {}
-            with open(env_path, 'r', encoding='utf-8') as f:
-                for line in f:
-                    line = line.strip()
-                    if not line or line.startswith('#'):
-                        continue
-                    match = re.match(r'^([A-Za-z0-9_]+)=(.*)$', line)
-                    if match:
-                        key, value = match.groups()
-                        env_vars[key] = value
-                        os.environ[key] = value
+            env_vars = parse_dotenv(env_path)
             print(f"已加載 {len(env_vars)} 個環境變數")
         
         # 加載配置
-        config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".llm_config.json")
+        config_path = os.path.join(current_dir, ".llm_config.json")
         print(f"在__init__中嘗試從以下路徑加載配置：{config_path}")
         config_loader = ConfigLoader(config_path)
         config = config_loader.load()
@@ -196,61 +194,96 @@ class LLMClient:
         print("開始LLM調用...")
         
         # 加載配置
-        import os
-        import json
-        config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".llm_config.json")
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        config_path = os.path.join(current_dir, ".llm_config.json")
         print(f"在chat方法中嘗試從以下路徑加載配置：{config_path}")
         
         try:
             # 確認配置文件存在
             if os.path.exists(config_path):
                 print(f"配置文件存在：{config_path}")
+            else:
+                print(f"警告：配置文件不存在：{config_path}")
             
-            # 直接使用模擬回應，避免API調用
-            print("使用模擬回應代替實際API調用")
-            
-            # 檢查配置文件（僅用於調試）
+            # 嘗試使用真實API
             try:
-                # 直接從配置文件加載
-                with open(config_path, 'r', encoding='utf-8') as f:
-                    config = json.load(f)
+                # 從環境變量或配置文件加載API金鑰
+                api_key = os.environ.get("XAI_API_KEY", "")
+                base_url = os.environ.get("XAI_BASE_URL", "https://api.x.ai/v1")
                 
-                xai_config = config.get("xai", {})
-                api_key = xai_config.get("api_key", "")
-                print(f"X.AI API金鑰長度：{len(api_key)}")
-                if len(api_key) > 8:
-                    print(f"X.AI API金鑰前綴：{api_key[:8]}...")
+                # 如果環境變量中沒有，則嘗試從配置文件加載
+                if not api_key and os.path.exists(config_path):
+                    with open(config_path, 'r', encoding='utf-8') as f:
+                        config = json.load(f)
+                    
+                    xai_config = config.get("xai", {})
+                    api_key = xai_config.get("api_key", "")
+                    base_url = xai_config.get("base_url", base_url)
+                
+                # 檢查API金鑰和模型
+                model = os.environ.get("XAI_MODEL", "grok-3-beta")
+                
+                # 驗證API金鑰
+                if api_key and len(api_key) > 20:  # 確保API金鑰足夠長
+                    print(f"使用真實API，API金鑰前綴：{api_key[:8]}...，模型：{model}")
+                    
+                    # 導入必要的包
+                    from openai import OpenAI
+                    
+                    # 創建客戶端
+                    client = OpenAI(api_key=api_key, base_url=base_url)
+                    
+                    # 調用API
+                    print(f"發送請求到 {base_url}，消息數：{len(messages)}")
+                    response = client.chat.completions.create(
+                        model=model,
+                        messages=messages,
+                        temperature=temperature,
+                        stream=stream
+                    )
+                    
+                    # 處理回應
+                    if stream:
+                        # 處理流式回應
+                        full_response = ""
+                        for chunk in response:
+                            if chunk.choices[0].delta.content:
+                                content = chunk.choices[0].delta.content
+                                print(content, end='', flush=True)
+                                full_response += content
+                        
+                        print()  # 換行
+                        return full_response
+                    else:
+                        # 處理非流式回應
+                        return response.choices[0].message.content
                 else:
-                    print("API金鑰不完整")
+                    print("API金鑰無效或不完整，回退到模擬回應")
+                    raise ValueError("API金鑰無效")
+                    
+            except Exception as api_error:
+                print(f"API調用失敗，回退到模擬回應。錯誤：{str(api_error)}")
+                import traceback
+                print(f"API錯誤詳情：\n{traceback.format_exc()}")
                 
-                # 檢查OpenAI包
-                try:
-                    import openai
-                    print(f"已導入OpenAI包版本：{openai.__version__}")
-                    print(f"OpenAI包路徑：{openai.__file__}")
-                except Exception as import_error:
-                    print(f"導入OpenAI包時出錯：{str(import_error)}")
+                # 回退到模擬回應
+                print("使用模擬回應代替真實API調用")
                 
-            except Exception as config_error:
-                print(f"讀取配置時出錯：{str(config_error)}")
-            
-            # 生成模擬回應
-            user_message = messages[-1]["content"] if messages else ""
-            if "問題" in user_message:
-                # 為測試返回一個簡單回應
-                return "這是一個模擬回應。實際部署時，這裡會調用真實的LLM API。"
-            
-            if "反面觀點" in user_message:
-                return "從反面角度來看，這個問題存在一些需要考慮的不同觀點..."
+                user_message = messages[-1]["content"] if messages else ""
+                if "問題" in user_message:
+                    return "這是一個模擬回應。實際部署時，這裡會調用真實的LLM API。"
                 
-            if "批判" in user_message:
-                return "批判性分析：這個觀點有以下幾個值得討論的地方..."
-                
-            if "意義" in user_message:
-                return "這個問題的現實意義在於它能夠幫助我們更好地理解..."
-                
-            # 默認回應
-            return "這是對「" + user_message[:20] + "...」的模擬回應。"
+                if "反面觀點" in user_message:
+                    return "從反面角度來看，這個問題存在一些需要考慮的不同觀點..."
+                    
+                if "批判" in user_message:
+                    return "批判性分析：這個觀點有以下幾個值得討論的地方..."
+                    
+                if "意義" in user_message:
+                    return "這個問題的現實意義在於它能夠幫助我們更好地理解..."
+                    
+                # 默認回應
+                return "這是對「" + user_message[:20] + "...」的模擬回應。"
                 
         except Exception as e:
             print(f"LLM調用出錯: {str(e)}")
