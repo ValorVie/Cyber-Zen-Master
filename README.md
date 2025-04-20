@@ -1,3 +1,4 @@
+
 # 赛博禅师 (Cyber Zen Master)
 
 一个基于多种大型语言模型的哲理问答思维链多步推理工作流。
@@ -15,10 +16,16 @@
 
 ### 安装依赖
 
-使用conda环境配置相应依赖包：
+使用pip安装所需依赖包：
 
 ```bash
-pip install openai requests
+pip install -r requirements.txt
+```
+
+或手动安装各个依赖：
+
+```bash
+pip install openai>=1.6.0 requests>=2.28.0 python-dotenv>=1.0.0
 ```
 
 ### 配置API密钥
@@ -38,7 +45,17 @@ export OPENAI_API_KEY=your_openai_api_key
 export XAI_API_KEY=your_xai_api_key
 ```
 
-2. **配置文件**：
+2. **.env文件**：
+
+在项目根目录或用户主目录创建 `.env` 文件：
+
+```
+DEEPSEEK_API_KEY=your_deepseek_api_key
+OPENAI_API_KEY=your_openai_api_key
+XAI_API_KEY=your_xai_api_key
+```
+
+3. **配置文件**：
 
 在用户主目录创建 `.llm_config.json` 文件：
 
@@ -59,6 +76,8 @@ export XAI_API_KEY=your_xai_api_key
   "default_provider": "deepseek"
 }
 ```
+
+优先级：环境变量 > .env文件 > 配置文件
 
 ### 运行主程序
 

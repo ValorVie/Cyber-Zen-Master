@@ -4,6 +4,14 @@ import json
 import os
 import logging
 from typing import Dict, Any, Optional
+from pathlib import Path
+
+# 嘗試導入 python-dotenv，如果安裝了的話
+try:
+    from dotenv import load_dotenv
+    _has_dotenv = True
+except ImportError:
+    _has_dotenv = False
 
 # 設置日誌
 logger = logging.getLogger(__name__)
@@ -36,6 +44,20 @@ class ConfigLoader:
         """
         if self._loaded and not force_reload:
             return self._config
+        
+        # 嘗試加載 .env 文件
+        if _has_dotenv:
+            # 嘗試從專案目錄加載 .env
+            dotenv_path = Path(".env")
+            if dotenv_path.exists():
+                load_dotenv(dotenv_path)
+                logger.info(f"Loaded environment variables from {dotenv_path}")
+            
+            # 嘗試從用戶主目錄加載 .env
+            home_dotenv_path = Path.home() / ".env"
+            if home_dotenv_path.exists():
+                load_dotenv(home_dotenv_path)
+                logger.info(f"Loaded environment variables from {home_dotenv_path}")
         
         # 從文件加載配置
         if os.path.exists(self.config_path):
